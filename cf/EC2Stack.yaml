@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 + Security Groups + EC2 Role with policy to manage S3 bucket
+Mappings:
+  AWSRegionUbuntu2AMI:
+    ap-northeast-1:
+      AmiId: ami-a21529cc
+    ap-southeast-1:
+      AmiId: ami-21d30f42
+    ap-southeast-2:
+      AmiId: ami-ba3e14d9
+    eu-central-1:
+      AmiId: ami-26c43149
+    eu-west-1:
+      AmiId: ami-ed82e39e
+    us-east-1:
+      AmiId: ami-2d39803a
+    us-west-1:
+      AmiId: ami-48db9d28
+    us-west-2:
+      AmiId: ami-d732f0b7
+Outputs:
+  ElasticIp:
+    Value:
+      Ref: EIP
+Parameters:
+  ParentNetworkStackName:
+    Type: String
+  EC2VolumeSize:
+    Default: '10'
+    Description: EBS Volume Size (data) to be attached to application node in GBs
+    MaxValue: '200'
+    MinValue: '5'
+    Type: Number
+  InstanceType:
+    AllowedValues:
+    - t2.micro
+    - t2.small
+    - t2.medium
+    - t2.large
+    - m4.large
+    - m4.xlarge
+    - m4.2xlarge
+    - m4.4xlarge
+    - m4.10xlarge
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c4.large
+    - c4.xlarge
+    - c4.2xlarge
+    - c4.4xlarge
+    - c4.8xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    ConstraintDescription: Must be a valid EC2 HVM instance type.
+    Default: t2.micro
+    Description: EC2 HVM instance type (t2.micro, m3.medium, etc).
+    Type: String
+  KeyName:
+    Default: cloudformation
+    Description: Name of an existing EC2 KeyPair. EC2 instances will launch with this
+      KeyPair.
+    Type: AWS::EC2::KeyPair::KeyName
+  ParentStackName:
+    Type: String
+  S3BucketName:
+    AllowedPattern: ^[a-z0-9][a-z0-9-.]*$
+    Description: Name of S3 bucket to manage
+    Type: String
+Resources:
+  EC2:
+    Properties:
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvdf
+        Ebs:
+          DeleteOnTermination: 'true'
+          VolumeSize:
+            Ref: EC2VolumeSize
+          VolumeType: gp2
+      IamInstanceProfile:
+        Ref: InstanceProfile
+      ImageId:
+        Fn::FindInMap:
+        - AWSRegionUbuntu2AMI
+        - Ref: AWS::Region
+        - AmiId
+      InstanceType:
+        Ref: InstanceType
+      KeyName:
+        Ref: KeyName
+      NetworkInterfaces:
+      - DeviceIndex: '0'
+        NetworkInterfaceId:
+          Ref: PublicSubnetNetworkInterface
+      Tags:
+      - Key: Name
+        Value:
+          Ref: ParentStackName
+    Type: AWS::EC2::Instance
+  EIP:
+    Properties:
+      InstanceId:
+        Ref: EC2
+    Type: AWS::EC2::EIP
+  InstanceProfile:
+    Properties:
+      Path: /
+      Roles:
+      - Ref: InstanceRole
+    Type: AWS::IAM::InstanceProfile
+  InstanceRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+      - PolicyDocument:
+          Statement:
+          - Action: '*'
+            Effect: Allow
+            Resource:
+              Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: S3BucketName
+                - /*
+          Version: '2012-10-17'
+        PolicyName:
+          Fn::Join:
+          - '-'
+          - - Ref: ParentStackName
+            - S3
+    Type: AWS::IAM::Role
+  PublicSubnetNetworkInterface:
+    Properties:
+      Description: Network Interface for application Node
+      GroupSet:
+      - Ref: SecurityGroup
+      SourceDestCheck: 'true'
+      SubnetId:
+        Fn::ImportValue: !Sub "${ParentNetworkStackName}-PublicSubnetId"
+      Tags:
+      - Key: Network
+        Value: Public
+    Type: AWS::EC2::NetworkInterface
+  SecurityGroup:
+    Properties:
+      GroupDescription: Default Security Group
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: '80'
+        IpProtocol: tcp
+        ToPort: '80'
+      - CidrIp: 0.0.0.0/0
+        FromPort: '433'
+        IpProtocol: tcp
+        ToPort: '433'
+      - CidrIp: 0.0.0.0/0
+        FromPort: '22'
+        IpProtocol: tcp
+        ToPort: '22'
+      - CidrIp:
+          Fn::ImportValue: !Sub "${ParentNetworkStackName}-VpcCird"
+        FromPort: '5432'
+        IpProtocol: tcp
+        ToPort: '5432'
+      VpcId:
+        Fn::ImportValue: !Sub "${ParentNetworkStackName}-VpcId"
+    Type: AWS::EC2::SecurityGroup

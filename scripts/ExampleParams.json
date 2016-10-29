@@ -1,0 +1,42 @@
+[
+  {
+    "ParameterKey": "ParentNetworkStackName",
+    "ParameterValue": "network-demo"
+  },
+  {
+    "ParameterKey": "S3Bucket",
+    "ParameterValue": "https://s3.amazonaws.com/10clouds-cf-templates/"
+  },
+  {
+    "ParameterKey": "KeyName",
+    "ParameterValue": "10c-cloudformation-ireland"
+  },
+  {
+    "ParameterKey": "DBInstanceType",
+    "ParameterValue": "db.t2.micro"
+  },
+  {
+    "ParameterKey": "DBName",
+    "ParameterValue": "dbname"
+  },
+  {
+    "ParameterKey": "DBUser",
+    "ParameterValue": "dbuser"
+  },
+  {
+    "ParameterKey": "DBPassword",
+    "ParameterValue": "1234asdf"
+  },
+  {
+    "ParameterKey": "DBAllocatedStorage",
+    "ParameterValue": "10"
+  },
+  {
+    "ParameterKey": "EC2InstanceType",
+    "ParameterValue": "t2.micro"
+  },
+  {
+    "ParameterKey": "EC2VolumeSize",
+    "ParameterValue": "10"
+  }
+]

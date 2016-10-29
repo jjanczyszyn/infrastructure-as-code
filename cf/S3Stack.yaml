@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: S3 bucket creation with optional name
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+Outputs:
+  S3BucketName:
+    Value:
+      Ref: S3Bucket
